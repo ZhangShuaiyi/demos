@@ -1,0 +1,17 @@
+probe begin {
+    printf("begin virtio_blk probe\n");
+}
+
+probe module("virtio-pci").function("virtio_pci_probe") {
+    printf("%s pci_dev:0x%x\n", ppfunc(), $pci_dev);
+}
+
+probe module("virtio-blk").function("virtblk_probe") {
+    pci_dev = @cast($vdev, "virtio_pci_device", "virtio_pci")->pci_dev;
+    pci_bus = pci_dev->bus->number;
+    dev_fn = pci_dev->devfn;
+    slot = dev_fn >> 3;
+    func = dev_fn & 3;
+    printf("%s pci_dev:0x%x bus:0x%x slot:0x%x func:0x%x\n",
+            ppfunc(), pci_dev, pci_bus, slot, func);
+}

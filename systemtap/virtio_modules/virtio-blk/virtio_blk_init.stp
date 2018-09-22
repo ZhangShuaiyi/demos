@@ -1,0 +1,31 @@
+# stap -d virtio_blk -d virtio_pci -d virtio --remote 192.168.122.52 virtio_blk_init.stp
+probe begin {
+    printf("virtio-blk init\n");
+}
+
+probe kernel.function("register_blkdev") {
+    printf("%s name:%s\n", ppfunc(), kernel_string($name));
+}
+
+/*
+probe kernel.function("pci_bus_match") {
+    printf("%s drv name:%s bus name:%s\n",
+            ppfunc(), kernel_string($drv->name), kernel_string($drv->bus->name));
+}
+*/
+
+probe module("virtio").function("virtio_dev_match") {
+    printf("%s drv name:%s bus name:%s\n",
+            ppfunc(), kernel_string($_dr->name), kernel_string($_dr->bus->name));
+}
+
+probe module("virtio_blk").function("virtblk_probe") {
+    // printf("%s vdev:%s\n", ppfunc(), $vdev$$);
+    printf("%s\n", ppfunc());
+    print_backtrace();
+}
+
+probe kernel.function("add_disk") {
+    printf("%s disk name:%s\n", ppfunc(), kernel_string($disk->disk_name));
+}
+

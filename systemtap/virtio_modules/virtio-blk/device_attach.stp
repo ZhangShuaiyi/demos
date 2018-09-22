@@ -1,0 +1,14 @@
+# stap --remote 192.168.122.52 device_attach.stp
+probe begin {
+    printf("begin probe device attach\n");
+}
+
+probe kernel.function("__device_attach").call {
+    printf("%s -> %s bus name:%s drv name:%s\n",
+            thread_indent(1), ppfunc(), kernel_string($drv->bus->name),
+            kernel_string($drv->name));
+}
+probe kernel.function("__device_attach").return {
+    printf("%s <- %s\n", thread_indent(-1), ppfunc());
+}
+
