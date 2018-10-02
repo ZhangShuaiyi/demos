@@ -1,0 +1,11 @@
+probe begin {
+    printf("virtio_blk serial\n");
+}
+
+probe module("virtio_blk").function("virtblk_serial_show").return {
+    printf("%s size:%d", ppfunc(), $return);
+    if ($return > 0) {
+        printf(" serial:%s", kernel_string($buf));
+    }
+    printf("\n");
+}
