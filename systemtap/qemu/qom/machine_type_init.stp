@@ -1,0 +1,19 @@
+probe begin {
+    printf("probe begin!\n");
+}
+
+probe process("/usr/libexec/qemu-kvm").function("do_qemu_init_machine_register_types") {
+    printf("%s\n", ppfunc());
+}
+
+probe process("/usr/libexec/qemu-kvm").function("main") {
+    printf("===>%s\n", ppfunc());
+}
+
+probe process("/usr/libexec/qemu-kvm").function("machine_register_types"),
+    process("/usr/libexec/qemu-kvm").function("machine_class_init"),
+    process("/usr/libexec/qemu-kvm").function("machine_initfn") {
+    printf("%s\n", ppfunc());
+    print_ubacktrace();
+}
+

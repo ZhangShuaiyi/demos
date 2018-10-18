@@ -1,0 +1,36 @@
+probe begin {
+    printf("probe begin!\n");
+}
+
+probe process("/usr/bin/virsh").function("main") {
+    printf("%s %s\n", ppfunc(), $$parms);
+    for (i=0; i < $argc; i++) {
+        printf("\t%s\n", user_string($argv[i]))
+    }
+}
+
+probe process("/usr/bin/virsh").function("virshInit") {
+    printf("%s ctl:%s\n", ppfunc(), $ctl$);
+}
+
+probe process("/usr/bin/virsh").function("virshReconnect") {
+    printf("%s ctl:%s\n", ppfunc(), $ctl$);
+    # print_ubacktrace();
+}
+
+probe process("/usr/bin/virsh").function("vshCommandRun") {
+    printf("%s %s\n", ppfunc(), $cmd$);
+    printf("\t%s\n", user_string($cmd->def->name));
+}
+
+/*
+probe process("/usr/lib64/libvirt.so").function("doRemoteOpen") {
+    printf("%s\n", ppfunc());
+    print_ubacktrace();
+}
+
+probe process("/usr/bin/virsh").function("cmdList") {
+    printf("%s\n", ppfunc());
+    print_ubacktrace();
+}
+*/

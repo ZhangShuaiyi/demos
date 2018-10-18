@@ -1,0 +1,18 @@
+# stap -d /usr/bin/virsh -d /usr/sbin/libvirtd -d /usr/lib64/libc-2.17.so -d /usr/lib64/libpthread-2.17.so virsh_list.stp
+probe begin {
+    printf("probe begin!\n");
+}
+
+probe process("/usr/lib64/libvirt.so").function("virConnectListAllDomains") {
+    printf("pid(%d) execname:%s %s\n", pid(), execname(), ppfunc());
+    print_ubacktrace();
+}
+
+probe process("/usr/lib64/libvirt.so").function("remoteConnectListAllDomains") {
+    printf("pid(%d) execname:%s %s\n", pid(), execname(), ppfunc());
+}
+
+probe process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemuConnectListAllDomains") {
+    printf("pid(%d) execname:%s %s\n", pid(), execname(), ppfunc());
+    # print_ubacktrace();
+}
