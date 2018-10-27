@@ -1,0 +1,43 @@
+probe begin {
+    printf("probe begin!\n");
+}
+
+probe process("/usr/lib64/libvirt.so").function("virSystemdCreateMachine") {
+    printf("%s\n", ppfunc());
+    if ($name > 0) {
+        printf("\tname:%s\n", user_string($name));
+    }
+    if ($drivername > 0) {
+        printf("\tdrivername:%s\n", user_string($drivername));
+    }
+    if ($uuid > 0) {
+        printf("\tuuid: ");
+        for (i=0; i<16; i++) {
+            printf("%02x", $uuid[i]);
+        }
+        printf("\n");
+    }
+    if ($rootdir > 0) {
+        printf("\trootdir:%s\n", user_string($rootdir));
+    }
+}
+
+probe process("/usr/lib64/libvirt.so").function("virSystemdMakeSliceName") {
+    printf("%s partition:%s\n", ppfunc(), user_string($partition));
+}
+
+probe process("/usr/lib64/libvirt.so").mark("dbus_method_call") {
+    printf("===>dbus_method_call iface:%s member:%s path:%s dest:%s\n",
+            user_string($arg1), user_string($arg2),
+            user_string($arg3), user_string($arg4));
+}
+
+probe process("/usr/lib64/libvirt.so").mark("dbus_method_reply") {
+    printf("<==dbus_method_reply iface:%s member:%s path:%s dest:%s\n",
+            user_string($arg1), user_string($arg2),
+            user_string($arg3), user_string($arg4));
+}
+
+probe process("/usr/lib64/libvirt.so").mark("dbus_method_error") {
+    printf("===dbus_method_error\n");
+}

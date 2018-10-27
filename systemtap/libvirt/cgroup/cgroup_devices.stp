@@ -1,0 +1,9 @@
+# stap -d /usr/sbin/libvirtd -d /usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so cgroup_devices.stp
+probe begin {
+    printf("probe begin!\n");
+}
+
+probe process("/usr/lib64/libvirt.so").function("virCgroupAllowDevice") {
+    printf("%s %c %d:%d\n", ppfunc(), $type, $major, $minor);
+    print_ubacktrace();
+}

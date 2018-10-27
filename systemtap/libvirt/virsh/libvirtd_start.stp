@@ -1,0 +1,8 @@
+# stap -DMAXSTRINGLEN=2048 libvirtd_start.stp
+probe begin {
+    printf("probe begin!\n");
+}
+
+probe process("/usr/sbin/libvirtd").statement("main@*:*") {
+    printf("%s %s\n", usymdata(uaddr()), $$locals$);
+}
