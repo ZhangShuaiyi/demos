@@ -1,0 +1,31 @@
+global aio_polls;
+
+probe begin {
+    printf("Begin probe iothread_run\n");
+}
+
+probe process("/usr/libexec/qemu-kvm").function("iothread_run") {
+    printf("%s ", ppfunc());
+    ctx = @cast($opaque, "IOThread")->ctx;
+    printf("ctx:%p notify_me:0x%x\n", ctx, ctx->notify_me);
+    printf("  poll_started:%d epollfd:%d epoll_enabled:%d epoll_available:%d\n",
+            ctx->poll_started, ctx->epollfd, ctx->epoll_enabled, ctx->epoll_available);
+}
+
+probe process("/usr/libexec/qemu-kvm").function("aio_poll") {
+    poll_started = $ctx->poll_started;
+    epollfd = $ctx->epollfd;
+    epoll_enabled = $ctx->epoll_enabled;
+    epoll_available = $ctx->epoll_available;
+    aio_polls[poll_started, epollfd, epoll_enabled, epoll_available]++;
+}
+
+probe end {
+    printf("After exit:\n");
+    foreach([poll_started, epollfd, epoll_enabled, epoll_available] in aio_polls) {
+        printf("[poll_started:%d epollfd:%d epoll_enabled:%d epoll_available:%d] count:%d\n",
+                poll_started, epollfd, epoll_enabled, epoll_available,
+                aio_polls[poll_started, epollfd, epoll_enabled, epoll_available]);
+    }
+}
+

@@ -1,0 +1,44 @@
+# stap -d /usr/lib64/libpthread-2.17.so -d /usr/lib64/libc-2.17.so -d /usr/lib64/libglib-2.0.so xxx.stp
+probe begin {
+    printf("Begin probe\n");
+}
+
+probe syscall.eventfd.return {
+    printf("eventfd fd:%d\n", $return);
+    print_ubacktrace();
+}
+
+probe process("/usr/libexec/qemu-kvm").function("aio_set_fd_handler") {
+    printf("===%s ctx:%p fd:%d\n", ppfunc(), $ctx, $fd);
+}
+
+probe process("/usr/libexec/qemu-kvm").function("event_notifier_poll").return {
+    task_name = task_execname(task_current());
+    if (substr(task_name, 0, 3) == "IO ") {
+        printf("%s result:%d\n", ppfunc(), $return);
+        print_ubacktrace();
+    }
+}
+
+probe process("/usr/libexec/qemu-kvm").function("aio_poll") {
+    task_name = task_execname(task_current());
+    if (substr(task_name, 0, 3) == "IO ")
+        printf("task:%d(%s) %s ctx:%p notify_me:%d\n", tid(), task_name, ppfunc(), $ctx, $ctx->notify_me);
+}
+
+probe process("/usr/libexec/qemu-kvm").function("aio_epoll") {
+    task_name = task_execname(task_current());
+    if (substr(task_name, 0, 3) == "IO ")
+        printf("task:%d(%s) %s npfd:%d timeout:%ld\n", tid(), task_name, ppfunc(), $npfd, $timeout);
+}
+
+probe process("/usr/libexec/qemu-kvm").function("qemu_poll_ns") {
+    task_name = task_execname(task_current());
+    if (substr(task_name, 0, 3) == "IO ") {
+        printf("task:%d(%s) %s npfd:%d timeout:%ld\n", tid(), task_name, ppfunc(), $nfds, $timeout);
+        for (i=0; i<$nfds; i++) {
+            printf("  fd:%d", $fds[i]->fd);
+        }
+        printf("\n");
+    }
+}

@@ -1,0 +1,25 @@
+global fname;
+global fds;
+
+probe begin {
+    fname = @1;
+    printf("Begin probe open %s\n", fname);
+}
+
+probe syscall.open.return {
+    if (pid() == target()) {
+        oname = user_string($filename);
+        if (isinstr(oname, fname) == 1) {
+            printf("open %s fd:%d\n", oname, $return);
+            fds[$return] = 1;
+            print_ubacktrace();
+        }
+    }
+}
+
+probe syscall.close {
+    if (pid() == target() && fd in fds) {
+        printf("close fd:%d\n", fd);
+        print_ubacktrace();
+    }
+}

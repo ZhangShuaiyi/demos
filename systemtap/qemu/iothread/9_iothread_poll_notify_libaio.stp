@@ -1,0 +1,117 @@
+# stap -d /usr/lib64/libpthread-2.17.so -d /usr/lib64/libc-2.17.so -d /usr/lib64/libglib-2.0.so xxx.stp
+probe begin {
+    printf("Begin probe\n");
+}
+
+probe process("/usr/libexec/qemu-kvm").function("aio_set_fd_handler") {
+    printf("===%s ctx:%p fd:%d\n", ppfunc(), $ctx, $fd);
+    print_ubacktrace();
+}
+
+probe process("/usr/libexec/qemu-kvm").function("qemu_poll_ns") {
+    task_name = task_execname(task_current());
+    if (substr(task_name, 0, 3) == "IO ") {
+        printf("task:%d(%s) %s npfd:%d timeout:%ld\n", tid(), task_name, ppfunc(), $nfds, $timeout);
+        for (i=0; i<$nfds; i++) {
+            printf("  fd:%d", $fds[i]->fd);
+        }
+        printf("\n");
+    }
+}
+
+probe process("/usr/libexec/qemu-kvm").function("qemu_laio_completion_cb"),
+      process("/usr/libexec/qemu-kvm").function("event_notifier_dummy_cb") {
+    task_name = task_execname(task_current());
+    if (substr(task_name, 0, 3) == "IO ") {
+        printf("%s rfd:%d wfd:%d\n", ppfunc(), $e->rfd, $e->wfd);
+    }
+}
+
+probe process("/usr/libexec/qemu-kvm").function("virtio_queue_host_notifier_aio_read") {
+    task_name = task_execname(task_current());
+    if (substr(task_name, 0, 3) == "IO ") {
+        printf("%s rfd:%d wfd:%d\n", ppfunc(), $n->rfd, $n->wfd);
+    }
+}
+
+probe process("/usr/libexec/qemu-kvm").mark("virtio_blk_handle_write") {
+    printf("virtio_blk_handle_write %d %d\n", $arg3, $arg4);
+}
+
+probe process("/usr/libexec/qemu-kvm").mark("virtio_blk_handle_read") {
+    printf("virtio_blk_handle_read %d %d\n", $arg3, $arg4);
+}
+
+probe process("/usr/libexec/qemu-kvm").function("virtio_blk_submit_multireq") {
+    printf("%s num_reqs:%d is_write:%d\n", ppfunc(), $mrb->num_reqs, $mrb->is_write);
+}
+
+probe process("/usr/libexec/qemu-kvm").function("blk_aio_prwv") {
+    task_name = task_execname(task_current());
+    if (substr(task_name, 0, 3) == "IO ") {
+        printf("%s\n", ppfunc());
+        print_ubacktrace();
+    }
+}
+
+probe process("/usr/libexec/qemu-kvm").mark("qemu_coroutine_yield") {
+    printf("=====qemu_coroutine_yield 0x%x => 0x%x\n", $arg1, $arg2);
+    // print_ubacktrace();
+}
+
+probe process("/usr/libexec/qemu-kvm").mark("qemu_aio_coroutine_enter") {
+    printf("=====qemu_aio_coroutine_enter 0x%x => 0x%x\n", $arg2, $arg3);
+}
+
+probe process("/usr/libexec/qemu-kvm").mark("qemu_coroutine_terminate") {
+    printf("=====qemu_coroutine_terminate 0x%x\n", $arg1);
+}
+
+probe process("/usr/libexec/qemu-kvm").mark("virtio_blk_rw_complete") {
+    printf("mark virtio_blk_rw_complete ret:%d\n", $arg3);
+    print_ubacktrace();
+}
+
+probe process("/usr/libexec/qemu-kvm").mark("virtio_blk_req_complete") {
+    in_len = @cast($arg2, "VirtIOBlockReq")->in_len;
+    printf("mark virtio_blk_req_complete req->in_len:%d status:%d\n", in_len, $arg3);
+}
+
+probe process("/usr/libexec/qemu-kvm").function("laio_do_submit") {
+    task_name = task_execname(task_current());
+    printf("%s task_name:%s task:%d fd:%d type:%d\n",
+            ppfunc(), task_name, tid(), $fd, $type);
+    print_ubacktrace();
+}
+
+probe process("/usr/libexec/qemu-kvm").function("ioq_submit") {
+    task_name = task_execname(task_current());
+    if (substr(task_name, 0, 3) == "IO ") {
+        printf("%s %s task:%d\n", ppfunc(), task_name, tid());
+        print_ubacktrace();
+    }
+}
+
+probe process("/usr/libexec/qemu-kvm").function("qemu_laio_process_completions") {
+    printf("%s %d s->e->rfd:%d\n", ppfunc(), tid(), $s->e->rfd);
+}
+
+probe process("/usr/libexec/qemu-kvm").function("qemu_laio_process_completion") {
+    printf("%s %d laiocb ret:%d co:0x%x\n", ppfunc(), tid(), $laiocb->ret, $laiocb->co);
+}
+
+probe process("/usr/libexec/qemu-kvm").function("virtio_blk_data_plane_notify") {
+    printf("%s %d s->bh:0x%x\n", ppfunc(), tid(), $s->bh);
+}
+
+probe process("/usr/libexec/qemu-kvm").function("notify_guest_bh") {
+    printf("%s %d\n", ppfunc(), tid());
+    print_ubacktrace();
+}
+
+probe process("/usr/libexec/qemu-kvm").mark("virtio_notify_irqfd") {
+    wfd = @cast($arg2, "VirtQueue")->guest_notifier->wfd;
+    printf("mark virtio_notify_irqfd %d fd:%d\n", tid(), wfd);
+    // printf("Try to exit probe!\n");
+    // exit();
+}

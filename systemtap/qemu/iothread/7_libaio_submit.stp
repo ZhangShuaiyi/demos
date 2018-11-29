@@ -1,0 +1,31 @@
+global t_fd;
+global quit;
+
+probe begin {
+    t_fd = $1;
+    quit = 0;
+    printf("Begin probe libaio submit fd:%d\n", t_fd);
+}
+
+probe process("/usr/libexec/qemu-kvm").function("laio_do_submit") {
+    if ($fd == t_fd) {
+        task_name = task_execname(task_current());
+        printf("%s task_name:%s task:%d fd:%d type:%d\n",
+                ppfunc(), task_name, tid(), $fd, $type);
+        if ($type == 2) {
+            print_ubacktrace();
+            quit = 1;
+        }
+    }
+}
+
+probe process("/usr/libexec/qemu-kvm").function("ioq_submit") {
+    task_name = task_execname(task_current());
+    if (substr(task_name, 0, 3) == "IO ") {
+        printf("%s %s task:%d\n", ppfunc(), task_name, tid());
+        if (quit == 1) {
+            print_ubacktrace();
+            exit();
+        }
+    }
+}

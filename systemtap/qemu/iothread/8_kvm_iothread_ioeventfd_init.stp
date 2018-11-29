@@ -1,0 +1,29 @@
+# stap -d /usr/lib64/libpthread-2.17.so -d /usr/lib64/libc-2.17.so -d /usr/lib64/libglib-2.0.so xxx.stp
+probe begin {
+    printf("Begin probe\n");
+}
+
+probe process("/usr/libexec/qemu-kvm").function("kvm_mem_ioeventfd_add") {
+    printf("%s fd:%d\n", ppfunc(), $e->rfd);
+    print_ubacktrace();
+}
+
+probe process("/usr/libexec/qemu-kvm").function("aio_set_fd_handler") {
+    printf("%s ctx:%p fd:%d\n", ppfunc(), $ctx, $fd);
+    print_ubacktrace();
+}
+
+probe process("/usr/libexec/qemu-kvm").function("qemu_poll_ns") {
+    task_name = task_execname(task_current());
+    if (substr(task_name, 0, 3) == "IO ") {
+        printf("task:%d(%s) %s npfd:%d timeout:%ld\n", tid(), task_name, ppfunc(), $nfds, $timeout);
+        for (i=0; i<$nfds; i++) {
+            printf("  fd:%d", $fds[i]->fd);
+        }
+        printf("\n");
+    }
+}
+
+probe module("kvm").function("kvm_assign_ioeventfd_idx") {
+    printf("====kvm module %s fd:%d\n", ppfunc(), $args->fd);
+}
