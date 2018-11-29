@@ -1,0 +1,26 @@
+# stap -DMAXMAPENTRIES=2048000 -DMAXACTION=4096000 qemu_balloon.stp
+global gpas;
+global hvas;
+
+probe begin {
+    printf("probe qemu balloon!\n");
+}
+
+probe process("/usr/libexec/qemu-kvm").mark("virtio_balloon_handle_output") {
+    gpas[$arg2]++;
+}
+
+probe process("/usr/libexec/qemu-kvm").function("balloon_page") {
+    hvas[$addr] = $deflate;
+}
+
+probe end {
+    printf("gpas:\n");
+    foreach (gpa in gpas) {
+        printf("0x%lx\n", gpa);
+    }
+    printf("\nhvas:\n");
+    foreach (hva in hvas) {
+        printf("0x%lx\n", hva);
+    }
+}

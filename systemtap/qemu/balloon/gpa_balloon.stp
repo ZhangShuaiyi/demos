@@ -1,0 +1,24 @@
+# stap -DMAXMAPENTRIES=2048000 -DMAXACTION=4096000 gpa_balloon.stp
+global gpas;
+global num;
+global total;
+
+probe begin {
+    num = 0;
+    total = $1;
+    warn("try to catch gpa balloon!\n");
+}
+
+probe process("/usr/libexec/qemu-kvm").mark("virtio_balloon_handle_output") {
+    gpas[$arg2]++;
+    num++;
+    if (num >= total) {
+        exit();
+    }
+}
+
+probe end {
+    foreach (gpa in gpas) {
+        printf("0x%lx\n", gpa);
+    }
+}

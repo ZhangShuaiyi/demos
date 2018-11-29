@@ -1,0 +1,24 @@
+# stap -DMAXMAPENTRIES=2048000 -DMAXACTION=4096000 qemu_balloon.stp
+global hvas;
+global num;
+global total;
+
+probe begin {
+    num = 0;
+    total = $1;
+    warn("try to catch hva balloon!\n");
+}
+
+probe process("/usr/libexec/qemu-kvm").function("balloon_page") {
+    hvas[$addr] = $deflate;
+    num++;
+    if (num >= total) {
+        exit();
+    }
+}
+
+probe end {
+    foreach (hva in hvas) {
+        printf("0x%lx\n", hva);
+    }
+}

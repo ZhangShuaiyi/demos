@@ -1,0 +1,7 @@
+probe begin {
+    printf("probe begin!\n");
+}
+
+probe kernel.trace("kvm:kvm_page_fault") {
+    printf("kvm_page_fault address:0x%lx\n", $fault_address);
+}

@@ -1,0 +1,44 @@
+global balloon_fill;
+global balloon_leak;
+global balloon_times;
+global start1;
+global end1;
+global start2;
+global end2;
+
+probe begin {
+    balloon_fill = 0;
+    balloon_leak = 0;
+    balloon_times = 0;
+    start1 = $1;
+    end1 = $2;
+    start2 = $3;
+    end2 = $4;
+    printf("probe balloon! pid:%d 0x%0x:0x%0x  0x%0x:0x%x\n",
+            target(), start1, end1, start2, end2);
+}
+
+probe syscall.madvise {
+    if (pid() == target()) {
+        if ((start1 <= start <= end1) || (start2 <= start <= end2)) {
+            if (advice == 4) {
+                balloon_fill += length;
+            } else if (advice == 3) {
+                balloon_leak += length;
+            }
+        } else {
+            printf("not vm start:0x%lx length:%ld advice:%d",
+                    start, length, advice);
+        }
+    }
+}
+
+probe process("/usr/libexec/qemu-kvm").mark("virtio_balloon_handle_output") {
+    balloon_times++
+}
+
+probe end {
+    printf("probe end! balloon_fill:%ld balloon_leak:%ld balloon_times:%d\n",
+            balloon_fill, balloon_leak, balloon_times);
+}
+

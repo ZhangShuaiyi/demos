@@ -1,0 +1,8 @@
+probe begin {
+    printf("probe begin!\n");
+}
+
+probe module("virtio_balloon").function("virtballoon_changed") {
+    printf("%s vdev:%p\n", ppfunc(), $vdev);
+    print_backtrace();
+}

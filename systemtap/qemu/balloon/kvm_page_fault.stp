@@ -1,0 +1,20 @@
+# stap -DMAXMAPENTRIES=2048000 -DMAXACTION=4096000 kvm_page_fault.stp
+global gpas;
+
+probe begin {
+    warn("wait 120s to end!\n");
+}
+
+probe kernel.trace("kvm:kvm_page_fault") {
+    gpas[$fault_address]++;
+}
+
+probe timer.s(120) {
+    exit();
+}
+
+probe end {
+    foreach (gpa in gpas) {
+        printf("0x%lx\n", gpa);
+    }
+}
