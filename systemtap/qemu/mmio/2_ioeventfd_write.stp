@@ -1,0 +1,12 @@
+probe begin {
+    printf("Begin probe ioeventfd_write!\n");
+}
+
+probe module("kvm").function("ioeventfd_write") {
+    printf("%s addr:0x%x len:%d\n", ppfunc(), $addr, $len);
+    print_backtrace();
+}
+
+probe kernel.trace("kvm:kvm_fast_mmio") {
+    printf("kvm:kvm_fast_mmio gpa:0x%x\n", $gpa);
+}

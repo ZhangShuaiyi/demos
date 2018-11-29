@@ -1,0 +1,64 @@
+# stap -d /usr/lib64/libpthread-2.17.so -d /usr/lib64/libc-2.17.so -d kernel -d kvm_intel xxx.stp
+global regions;
+global sets;
+global sptes;
+
+probe begin {
+    printf("Begin probe mmio\n");
+}
+
+probe process("/usr/libexec/qemu-kvm").function("memory_region_init_io") {
+    lname = "NULL";
+    if ($name > 0) {
+        lname = user_string($name);
+    }
+    printf("%s name:%s size:%d\n", ppfunc(), lname, $size);
+    bt = ubacktrace();
+    if ([bt] in regions) {
+        regions[bt]++;
+    } else {
+        regions[bt]++;
+        print_ubacktrace();
+    }
+}
+
+probe process("/usr/libexec/qemu-kvm").function("kvm_set_phys_mem") {
+    mr = $section->mr;
+    printf("%s add:%d ram:%d readonly:%d rom_device:%d\n",
+            ppfunc(), $add, mr->ram, mr->readonly, mr->rom_device);
+    bt = ubacktrace();
+    if ([bt] in sets) {
+        sets[bt]++;
+    } else {
+        sets[bt]++;
+        print_ubacktrace();
+    }
+}
+
+probe module("kvm").function("kvm_vm_ioctl_set_memory_region") {
+    printf("%s mem:%s\n", ppfunc(), $mem$);
+}
+
+probe module("kvm").function("mark_mmio_spte") {
+    bt = backtrace();
+    if ([bt] in sptes) {
+        sptes[bt]++;
+    } else {
+        sptes[bt]++;
+        print_backtrace();
+    }
+}
+
+probe kernel.trace("kvmmmu:mark_mmio_spte") {
+    printf("kvmmmu:mark_mmio_spte sptep:0x%x 0x%x gfn:0x%x access:0x%x gen:0x%x\n",
+            $sptep, kernel_long($sptep), $gfn, $access, $gen);
+}
+
+probe module("kvm").function("mmu_spte_set") {
+    printf("%s sptep:0x%x new_spte:0x%x\n", ppfunc(), kernel_long($sptep), $new_spte);   
+}
+
+
+probe module("kvm").function("kvm_assign_ioeventfd_idx") {
+    printf("%s bus_idx:%d args:%s\n", ppfunc(), $bus_idx, $args$);
+}

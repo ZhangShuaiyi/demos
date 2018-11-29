@@ -1,0 +1,18 @@
+probe begin {
+    printf("Begin probe ioeventfd assign!\n");
+}
+
+probe process("/usr/libexec/qemu-kvm").function("kvm_mem_ioeventfd_add") {
+    printf("%s fd:%d data:%ld section->mr:%p\n",
+            ppfunc(), $e->rfd, $data, $section->mr);
+    print_ubacktrace();
+}
+
+probe process("/usr/libexec/qemu-kvm").function("kvm_set_ioeventfd_mmio") {
+    printf("%s fd:%d addr:0x%x size:%d match_data:%d\n",
+            ppfunc(), $fd, $addr, $size, $datamatch);
+}
+
+probe module("kvm").function("kvm_assign_ioeventfd_idx") {
+    printf("%s bus_idx:%d args:%s\n", ppfunc(), $bus_idx, $args$);
+}
