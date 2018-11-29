@@ -2,6 +2,10 @@ probe begin {
     printf("block discard\n");
 }
 
+probe process("/usr/libexec/qemu-kvm").function("scsi_disk_emulate_unmap") {
+    printf("%s==\n", ppfunc());
+}
+
 probe process("/usr/libexec/qemu-kvm").function("raw_aio_pdiscard") {
     printf("%s offset:%d bytes:%d\n", ppfunc(), $offset, $bytes);
 }

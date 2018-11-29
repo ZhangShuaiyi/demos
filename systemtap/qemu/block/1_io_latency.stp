@@ -1,0 +1,78 @@
+global pw_lats;
+global h_io;
+global qn_lats;
+global t_lats;
+
+global start;
+global io_s;
+global io_c;
+global qnotify;
+
+global quit;
+
+probe begin {
+    start = 0;
+    quit = 0;
+    printf("Begin probe!\n");
+}
+
+probe kernel.trace("kvm:kvm_fast_mmio") {
+    start = gettimeofday_us();
+}
+
+probe syscall.io_submit {
+    if (start != 0) {
+        io_s = gettimeofday_us();
+        lat = io_s - start;
+        pw_lats[ctx_id] <<< lat;
+    }
+}
+
+probe kernel.function("eventfd_signal") {
+    // printf("0x%x\n", $ctx);
+    if ($ctx == $1 && start != 0) {
+        io_c = gettimeofday_us();
+        lat = io_c - io_s;
+        h_io[$ctx] <<< lat;
+    }
+}
+
+probe syscall.write {
+    if (start != 0 && pid() == target() && fd == $2) {
+        qnotify = gettimeofday_us();
+        lat = qnotify - io_c;
+        qn_lats[pid()] <<< lat;
+        lat = qnotify - start;
+        t_lats[pid()] <<< lat;
+        if (quit) {
+            exit();
+        }
+    }
+}
+
+probe timer.s(10) {
+    quit = 1;
+}
+
+probe end {
+    foreach(v in pw_lats) {
+        printf("count:%d min:%d max:%d avg:%d\n",
+                @count(pw_lats[v]), @min(pw_lats[v]),
+                @max(pw_lats[v]), @avg(pw_lats[v]));
+    }
+    foreach(v in h_io) {
+        printf("count:%d min:%d max:%d avg:%d\n",
+                @count(h_io[v]), @min(h_io[v]),
+                @max(h_io[v]), @avg(h_io[v]));
+    }
+    foreach(v in qn_lats) {
+        printf("count:%d min:%d max:%d avg:%d\n",
+                @count(qn_lats[v]), @min(qn_lats[v]),
+                @max(qn_lats[v]), @avg(qn_lats[v]));
+    }
+    foreach(v in t_lats) {
+        printf("count:%d min:%d max:%d avg:%d\n",
+                @count(t_lats[v]), @min(t_lats[v]),
+                @max(t_lats[v]), @avg(t_lats[v]));
+    }
+}

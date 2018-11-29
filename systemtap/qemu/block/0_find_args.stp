@@ -1,0 +1,11 @@
+probe begin {
+    printf("Begin probe!\n");
+}
+
+probe kernel.function("eventfd_signal") {
+    printf("%s ctx:0x%x\n", ppfunc(), $ctx);
+}
+
+probe process("/usr/libexec/qemu-kvm").function("virtio_notify_irqfd") {
+    printf("%s fd:%d\n", ppfunc(), $vq->guest_notifier->rfd);
+}
