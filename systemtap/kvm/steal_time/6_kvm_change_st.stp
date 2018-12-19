@@ -1,0 +1,19 @@
+probe begin {
+    printf("Try to close steal_time!\n");
+}
+ 
+probe module("kvm").function("vcpu_enter_guest") {
+    for (i=0; i<$vcpu->arch->cpuid_nent; i++) {
+        if ($vcpu->arch->cpuid_entries[i]->function == 0x40000001 && ($vcpu->arch->cpuid_entries[i]->eax&0x20)) {
+            printf("KVM_CPUID_FEATURES eax:0x%x ", $vcpu->arch->cpuid_entries[i]->eax);
+            $vcpu->arch->cpuid_entries[i]->eax = $vcpu->arch->cpuid_entries[i]->eax & 0xffffffdf;
+            printf("after clear KVM_CPUID_FEATURES eax:0x%x\n", $vcpu->arch->cpuid_entries[i]->eax);
+            break;
+        }
+    }
+    if ($vcpu->arch->st->msr_val & 1) {
+        printf("vcpu:%d init st->msr_val:0x%lx ", $vcpu->vcpu_id, $vcpu->arch->st->msr_val);
+        $vcpu->arch->st->msr_val = $vcpu->arch->st->msr_val & 0xfffffffffffffffe;
+        printf("after clear st->msr_val:0x%lx\n", $vcpu->arch->st->msr_val);
+    }
+}

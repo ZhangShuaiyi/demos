@@ -1,0 +1,17 @@
+probe begin {
+    printf("Begin probe!\n");
+}
+
+probe module("kvm").function("kvm_vcpu_ioctl_set_cpuid2") {
+    printf("%s nent:%d\n", ppfunc(), $cpuid->nent);
+    for (i=0; i<$cpuid->nent; i++) {
+        printf("%s\n", $entries[i]$);
+    }
+}
+
+probe kernel.trace("kvm:kvm_cpuid") {
+    if ($function == 0x40000001) {
+        printf("kvm:kvm_cpuid function:0x%x KVM_CPUID_FEATURES eax:0x%x\n",
+                $function, $rax);
+    }
+}
