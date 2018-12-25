@@ -34,6 +34,7 @@ int main(int argc, char *argv[]) {
     FILE *fc;
     uint8_t *code = NULL;
     int code_len = 0;
+    int running = 1;
     if (argc!=2) {
         fprintf(stderr, "Parameter error, need machine code input!\n");
         return 1;
@@ -79,6 +80,7 @@ int main(int argc, char *argv[]) {
 
     /* 申请4096字节内存 */
     mem = mmap(NULL, 0x1000, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+    printf("mmap ret:0x%lx\n", mem);
     if (!mem) {
         err_exit("allocation guest memory");
     }
@@ -143,7 +145,10 @@ int main(int argc, char *argv[]) {
         err_exit("KVM_SET_REGS");
     }
 
-    while(1) {
+    printf("waiting input to run!");
+    getchar();
+
+    while(running) {
         ret = ioctl(vcpufd, KVM_RUN, NULL);
         if (ret==-1) {
             err_exit("KVM_RUN");
@@ -151,7 +156,7 @@ int main(int argc, char *argv[]) {
         switch (run->exit_reason) {
         case KVM_EXIT_HLT:
             puts("KVM_EXIT_HLT");
-            return 0;
+            running = 0;
         case KVM_EXIT_IO:
             /* fprintf(stdout, "\nKVM_EXIT_IO size:%d port:0x%x count:%d\n", run->io.size, run->io.port, run->io.count); */
             /* 因为IO退出虚机*/
@@ -159,19 +164,23 @@ int main(int argc, char *argv[]) {
                 putchar(*(((char *)run) + run->io.data_offset));
             } else {
                 fprintf(stderr, "unhandled KVM_EXIT_IO\n");
-                return 1;
+                running = 0;
             }
             break;
         case KVM_EXIT_FAIL_ENTRY:
             fprintf(stderr, "KVM_EXIT_FAIL_ENTRY: hardware_entry_failure_reason=0x%llx\n",
                     (unsigned long long)run->fail_entry.hardware_entry_failure_reason);
-            return 1;
+            running = 0;
         case KVM_EXIT_INTERNAL_ERROR:
             fprintf(stderr, "KVM_EXIT_INTERNAL_ERROR: suberror=0x%x\n", run->internal.suberror);
-            return 1;
+            running = 0;
         default:
             fprintf(stderr, "exit_reason=0x%x\n", run->exit_reason);
-            return 0;
+            running = 0;
         }
     }
+
+    printf("waiting input to exit!");
+    getchar();
+    return 0;
 }
