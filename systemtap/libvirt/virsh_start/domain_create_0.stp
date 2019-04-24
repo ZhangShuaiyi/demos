@@ -1,0 +1,22 @@
+# stap -d /usr/lib64/libvirt.so domain_create_0.stp
+probe begin {
+    printf("Begin probe!\n");
+}
+
+probe process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemuDomainCreateWithFlags") {
+    printf("%s dom(name:%s id:%d) flags:0x%lx\n", ppfunc(), user_string($dom->name), $dom->id, $flags);
+}
+
+probe process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemuBuildCommandLine") {
+    printf("%s\n", ppfunc());
+}
+
+probe process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemuBuildMemCommandLine"),
+      process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemuBuildSmpCommandLine") {
+    printf("%s cmd->nargs:%d\n", ppfunc(), @cast($cmd, "_virCommand", "/usr/lib64/libvirt.so")->nargs);
+    printf("\t");
+    for (i=0; i<@cast($cmd, "_virCommand", "/usr/lib64/libvirt.so")->nargs; i++) {
+        printf("%s ", user_string(@cast($cmd, "_virCommand", "/usr/lib64/libvirt.so")->args[i]));
+    }
+    printf("\n");
+}
