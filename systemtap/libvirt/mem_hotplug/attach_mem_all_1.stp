@@ -1,0 +1,11 @@
+probe begin {
+    warn("Begin probe!\n");
+}
+
+probe process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("*").call {
+    printf("%s -> %s\n", thread_indent(2), ppfunc());
+}
+
+probe process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("*").return {
+    printf("%s <- %s\n", thread_indent(-2), ppfunc());
+}

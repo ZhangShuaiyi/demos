@@ -1,0 +1,13 @@
+probe begin {
+    printf("Begin probe!\n");
+}
+
+probe process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemu*@qemu/qemu_hotplug.c").call,
+      process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemu*@qemu/qemu_monitor.c").call {
+    printf("%s -> %s\n", thread_indent(1), ppfunc());
+}
+
+probe process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemu*@qemu/qemu_hotplug.c").return,
+      process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemu*@qemu/qemu_monitor.c").return {
+    printf("%s <- %s\n", thread_indent(-1), ppfunc());
+}

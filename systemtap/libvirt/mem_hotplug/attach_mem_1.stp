@@ -1,0 +1,22 @@
+probe begin {
+    printf("Begin probe!\n");
+}
+
+probe process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemuMonitorAddObject"),
+      process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemuMonitorAddDevice") {
+    printf("%s mon:%p\n", ppfunc(), $mon);
+}
+
+probe process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemuProcessRefreshBalloonState"),
+      process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemuDomainUpdateMemoryDeviceInfo"),
+      process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemuDomainUpdateDeviceList") {
+    mon = @cast($vm->privateData, "_qemuDomainObjPrivate")->mon;
+    printf("%s driver:%p vm:%p mon:%p\n", ppfunc(), $driver, $vm, mon);
+}
+
+probe process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemuMonitorSend") {
+    printf("%s mon %p(fd:%d msg:%p nextSerial:%d)\n"
+           "\tmsg(txFD:%d txLength:%d txBuffer:%s)\n",
+           ppfunc(), $mon, $mon->fd, $mon->msg, $mon->nextSerial,
+           $msg->txFD, $msg->txLength, user_string_n($msg->txBuffer, $msg->txLength));
+}

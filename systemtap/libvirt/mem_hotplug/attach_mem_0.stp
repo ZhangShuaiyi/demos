@@ -28,14 +28,20 @@ probe process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").fun
     max_memory = $vm->def->mem->max_memory;
     memory_slots = $vm->def->mem->memory_slots;
     printf("%s vm->def->mem(total_memory:%ld cur_balloon:%ld max_memory:%ld memory_slots:%d) def->nmems:%d\n\t"
-            " mem(size:%ld model:%d)\n", ppfunc(),
+            " mem(size:%ld model:%d) mem->info->alias:%p\n", ppfunc(),
             total_memory, cur_balloon, max_memory, memory_slots, $vm->def->nmems,
-            $mem->size, $mem->model);
+            $mem->size, $mem->model, $mem->info->alias);
 }
+
+probe process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemuBuildMemoryDeviceStr").return {
+    printf("%s mem->info->alias:%s devstr:%s\n", ppfunc(), user_string($mem->info->alias), user_string($return));
+}
+
 
 probe process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemuBuildMemoryBackendProps") {
     printf("%s alias:%s mem(pagesize:%d size:%ld)\n", ppfunc(), user_string($alias), $mem->pagesize, $mem->size);
 }
+
 
 probe process("/usr/lib64/libvirt/connection-driver/libvirt_driver_qemu.so").function("qemuBuildMemoryBackendProps").return {
     printf("%s return backendProps:\n", ppfunc());
