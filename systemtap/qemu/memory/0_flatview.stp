@@ -1,0 +1,34 @@
+# stap --ldd -d /usr/libexec/qemu-kvm 0_flatview.stp
+global news;
+global destroys;
+global names;
+
+probe begin {
+    warn("Probe begin!\n");
+}
+
+probe process("/usr/libexec/qemu-kvm").mark("flatview_new") {
+    news[$arg2]++;
+    if ([$arg2] in names) {
+        ;
+    } else if ($arg2) {
+        names[$arg2] = user_string(@cast($arg2, "MemoryRegion")->name)
+    }
+    printf("flatview_new mr:%s\n", names[$arg2]);
+    print_ubacktrace();
+}
+
+probe process("/usr/libexec/qemu-kvm").mark("flatview_destroy") {
+    destroys[$arg2]++;
+}
+
+probe timer.s(30) {
+    printf("\n\n");
+    foreach ([mr] in news) {
+        printf("mr 0x%lx news:%d\n", mr, news[mr]);
+    }
+    foreach ([mr] in destroys) {
+        printf("mr 0x%lx destroys:%d\n", mr, destroys[mr]);
+    }
+    exit();
+}

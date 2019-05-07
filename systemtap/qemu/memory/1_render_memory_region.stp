@@ -1,0 +1,28 @@
+global names;
+
+probe begin {
+    warn("probe begin!\n");
+}
+
+probe process("/usr/libexec/qemu-kvm").mark("flatview_new") {
+    if ([$arg2] in names) {
+        ;
+    } else if ($arg2) {
+        names[$arg2] = user_string(@cast($arg2, "MemoryRegion")->name);
+    }
+    printf("flatview_new view:0x%lx mr:%s=====================\n", $arg1, names[$arg2]);
+}
+
+probe process("/usr/libexec/qemu-kvm").function("render_memory_region") {
+    if ([$view->root] in names) {
+        ;
+    } else {
+        names[$view->root] = user_string($view->root->name);
+    }
+    if ([$mr] in names) {
+        ;
+    } else {
+        names[$mr] = user_string($mr->name);
+    }
+    printf("%s view:%p nr:%d view->root:%s mr:%s\n", ppfunc(), $view, $view->nr, names[$view->root], names[$mr]);
+} 
