@@ -1,4 +1,5 @@
 global names;
+global i=0;
 
 probe begin {
     warn("probe begin!\n");
@@ -10,7 +11,7 @@ probe process("/usr/libexec/qemu-kvm").mark("flatview_new") {
     } else if ($arg2) {
         names[$arg2] = user_string(@cast($arg2, "MemoryRegion")->name);
     }
-    printf("flatview_new view:0x%lx mr:%s=====================\n", $arg1, names[$arg2]);
+    printf("xxx%d flatview_new mr:%s=====================\n", i++, names[$arg2]);
 }
 
 probe process("/usr/libexec/qemu-kvm").function("render_memory_region") {
@@ -24,5 +25,17 @@ probe process("/usr/libexec/qemu-kvm").function("render_memory_region") {
     } else {
         names[$mr] = user_string($mr->name);
     }
-    printf("%s view:%p nr:%d view->root:%s mr:%s\n", ppfunc(), $view, $view->nr, names[$view->root], names[$mr]);
-} 
+    printf("%s -> %s nr:%d view->root:%s mr:{name:%s addr:0x%lx size:0x%lx}\n",
+            thread_indent(2), ppfunc(), $view->nr,
+            names[$view->root], names[$mr], user_long(&$mr->addr), user_long(&$mr->size));
+}
+
+probe process("/usr/libexec/qemu-kvm").function("render_memory_region").return {
+    printf("%s <- %s\n", thread_indent(-2), ppfunc());
+}
+
+probe process("/usr/libexec/qemu-kvm").function("flatview_insert") {
+    printf("%s  %s view->nr:%d i:%d fr:{mr:%s, offset_in_region:0x%lx, addr:{start:0x%lx, size:0x%lx}}\n",
+            thread_indent(0), ppfunc(), $view->nr, $pos, names[$range->mr],
+            $range->offset_in_region, user_long(&$range->addr->start), user_long(&$range->addr->size));
+}
