@@ -2,7 +2,6 @@
 global news;
 global destroys;
 global names;
-global i=0;
 
 probe begin {
     warn("Probe begin!\n");
@@ -26,10 +25,10 @@ probe process("/usr/libexec/qemu-kvm").mark("flatview_destroy") {
 probe timer.s(30) {
     printf("\n\n");
     foreach ([mr] in news) {
-        printf("mr 0x%lx news:%d\n", mr, news[mr]);
+        printf("mr 0x%lx(%s) news:%d\n", mr, names[mr], news[mr]);
     }
     foreach ([mr] in destroys) {
-        printf("mr 0x%lx destroys:%d\n", mr, destroys[mr]);
+        printf("mr 0x%lx(%s) destroys:%d\n", mr, names[mr], destroys[mr]);
     }
     exit();
 }
