@@ -1,0 +1,8 @@
+probe begin {
+    warn("Begin probe!\n");
+}
+
+probe process("/usr/libexec/qemu-kvm").mark("kvm_set_user_memory") {
+    printf("kvm_set_user_memory slot:%d flags:0x%x guest_phys_addr:0x%lx memory_size:0x%lx userspace_addr:0x%lx\n",
+                $arg1, $arg2, $arg3, $arg4, $arg5);
+}
