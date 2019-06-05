@@ -1,0 +1,8 @@
+probe begin {
+    warn("Begin probe!\n");
+}
+
+probe process("/usr/libexec/qemu-kvm").mark("vfio_pci_read_config") {
+    printf("vfio_pci_read_config name:%s addr:0x%x len:%d val:0x%x\n",
+            user_string($arg1), $arg2, $arg3, $arg4 & 0xffffffff);
+}
