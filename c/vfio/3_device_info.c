@@ -6,6 +6,27 @@
 #include <unistd.h>
 #include <linux/vfio.h>
 
+void loop_region_cap(struct vfio_region_info *info) {
+    struct vfio_info_cap_header *hdr;
+    void *ptr = info;
+
+    if (!(info->flags & VFIO_REGION_INFO_FLAG_CAPS)) {
+        return;
+    }
+
+    for (hdr = ptr + info->cap_offset; hdr != ptr; hdr = ptr + hdr->next) {
+        printf("  hdr {id:%d, version:%d next:%d}\n", hdr->id, hdr->version, hdr->next);
+        if (VFIO_REGION_INFO_CAP_SPARSE_MMAP == hdr->id) {
+            struct vfio_region_info_cap_sparse_mmap *sparse = (struct vfio_region_info_cap_sparse_mmap *)hdr;
+            int i = 0;
+            for (i = 0; i < sparse->nr_areas; i++) {
+                printf("    sparse->areas %d offset:0x%lx size:0x%lx\n",
+                    i, sparse->areas[i].offset, sparse->areas[i].size);
+            }
+        }
+    }
+}
+
 int main(int argc, char *argv[]) {
     int group = 0, container = 0, device = 0;
     int ret, i;
@@ -71,6 +92,17 @@ int main(int argc, char *argv[]) {
         ioctl(device, VFIO_DEVICE_GET_REGION_INFO, &reg);
         printf("%d region info {argsz:%d, flags:0x%x, cap_offset:%d size:%ld offset:0x%lx}\n",
             reg.index, reg.argsz, reg.flags, reg.cap_offset, reg.size, reg.offset);
+        loop_region_cap(&reg);
+        if (reg.argsz > sizeof(struct vfio_region_info)) {
+            struct vfio_region_info *rty = malloc(reg.argsz);
+            rty->index = i;
+            rty->argsz = reg.argsz;
+            ioctl(device, VFIO_DEVICE_GET_REGION_INFO, rty);
+            printf("%d region info {argsz:%d, flags:0x%x, cap_offset:%d size:%ld offset:0x%lx}\n",
+                rty->index, rty->argsz, rty->flags, rty->cap_offset, rty->size, rty->offset);
+            loop_region_cap(rty);
+            free(rty);
+        }
     }
 
     getchar();
