@@ -33,3 +33,9 @@ probe syscall.mmap2 {
                 name, start, length, prot, prot_str, flags, flags_str, fd, pgoffset);
     }
 }
+
+probe kernel.function("remap_pfn_range") {
+    if (pid() == target())
+        printf("%s vma:0x%lx addr:0x%lx pfn:0x%lx size:0x%lx\n",
+                ppfunc(), $vma, $addr, $pfn, $size);
+}
